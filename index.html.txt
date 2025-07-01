@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario Cooperativo</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better aesthetics and responsiveness */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top to prevent content overflow */
+            min-height: 100vh;
+            padding: 10px; /* Reduced padding for more screen space */
+            box-sizing: border-box;
+        }
+        .calendar-container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* Softer shadow */
+            padding: 2.5rem; /* Increased padding */
+            max-width: 100%; /* Set to 100% for full-screen appearance */
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem; /* Space between sections */
+        }
+        .header-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .header-nav button {
+            background-color: #4f46e5; /* Indigo */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem; /* Rounded buttons */
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 4px 8px rgba(79, 70, 229, 0.2); /* Button shadow */
+        }
+        .header-nav button:hover {
+            background-color: #4338ca; /* Darker indigo on hover */
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1rem; /* Increased space between days */
+        }
+        .day-name, .day-cell {
+            padding: 1.25rem 0.75rem; /* Increased padding for cells */
+            text-align: center;
+            border-radius: 0.75rem; /* Rounded day cells */
+            font-weight: 500;
+            min-height: 120px; /* Increased consistent height for cells */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            position: relative;
+            overflow: hidden; /* Hide overflow for notes */
+        }
+        .day-name {
+            background-color: #e0e7ff; /* Light indigo for day names */
+            color: #312e81; /* Darker text for day names */
+            font-weight: 700;
+        }
+        .day-cell {
+            background-color: #f8fafc; /* Lighter background for empty cells */
+            border: 1px solid #e2e8f0; /* Light border */
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .day-cell:hover {
+            background-color: #eff6ff; /* Lighter blue on hover */
+            border-color: #93c5fd; /* Blue border on hover */
+        }
+        .day-cell.current-month {
+            background-color: #ffffff; /* White background for current month days */
+        }
+        .day-cell.today {
+            background-color: #d1fae5; /* Light green for today */
+            border-color: #34d399; /* Green border for today */
+            box-shadow: 0 0 0 2px #34d399; /* Highlight today */
+        }
+        .day-number {
+            font-size: 1.5rem; /* Larger day number */
+            font-weight: 700;
+            color: #1f2937; /* Dark gray */
+            margin-bottom: 0.75rem; /* Increased margin */
+        }
+        .day-note {
+            font-size: 0.9rem; /* Slightly larger note font */
+            color: #4b5563; /* Medium gray */
+            white-space: pre-wrap; /* Preserve whitespace and allow wrapping */
+            word-break: break-word; /* Break long words */
+            max-height: 60px; /* Increased limit note height */
+            overflow: hidden; /* Hide overflow notes */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* Darker overlay */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: #ffffff;
+            padding: 2.5rem; /* More padding */
+            border-radius: 1.5rem; /* More rounded */
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2); /* Deeper shadow */
+            width: 90%;
+            max-width: 500px;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+        .modal-content h3 {
+            font-size: 1.75rem; /* Larger heading */
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .modal-content textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid #cbd5e1; /* Light border */
+            border-radius: 0.75rem;
+            min-height: 120px; /* Taller textarea */
+            font-size: 1rem;
+            resize: vertical;
+            margin-bottom: 1.5rem;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end; /* Align buttons to the right */
+            gap: 1rem;
+        }
+        .modal-buttons button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        .modal-buttons .save-button {
+            background-color: #10b981; /* Green */
+            color: white;
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.2);
+        }
+        .modal-buttons .save-button:hover {
+            background-color: #059669; /* Darker green */
+        }
+        .modal-buttons .cancel-button {
+            background-color: #ef4444; /* Red */
+            color: white;
+            box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
+        }
+        .modal-buttons .cancel-button:hover {
+            background-color: #dc2626; /* Darker red */
+        }
+        .modal-buttons .delete-button {
+            background-color: #f97316; /* Orange */
+            color: white;
+            box-shadow: 0 4px 8px rgba(249, 115, 22, 0.2);
+        }
+        .modal-buttons .delete-button:hover {
+            background-color: #ea580c; /* Darker orange */
+        }
+
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none; /* Hidden by default */
+        }
+        .spinner.show {
+            display: block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* User ID display */
+        .user-id-display {
+            font-size: 0.9rem;
+            color: #6b7280;
+            text-align: center;
+            margin-top: 1rem;
+            word-break: break-all; /* Allow breaking long IDs */
+        }
+    </style>
+</head>
+<body>
+    <div class="calendar-container">
+        <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-6">Calendario Cooperativo</h1>
+        <p class="user-id-display" id="userIdDisplay">Cargando ID de usuario...</p>
+
+        <div class="header-nav">
+            <button id="prevMonthBtn">Mes Anterior</button>
+            <h2 id="currentMonthYear" class="text-3xl font-bold text-gray-800"></h2>
+            <button id="nextMonthBtn">Mes Siguiente</button>
+        </div>
+
+        <div class="calendar-grid">
+            <div class="day-name">Lun</div>
+            <div class="day-name">Mar</div>
+            <div class="day-name">Mié</div>
+            <div class="day-name">Jue</div>
+            <div class="day-name">Vie</div>
+            <div class="day-name">Sáb</div>
+            <div class="day-name">Dom</div>
+        </div>
+
+        <div id="loadingSpinner" class="spinner"></div>
+    </div>
+
+    <!-- Modal para añadir/editar notas -->
+    <div id="noteModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modalTitle">Añadir Nota para el <span id="modalDate"></span></h3>
+            <textarea id="noteInput" placeholder="Escribe tu nota aquí..."></textarea>
+            <div class="modal-buttons">
+                <button id="deleteNoteBtn" class="delete-button">Eliminar</button>
+                <button id="cancelNoteBtn" class="cancel-button">Cancelar</button>
+                <button id="saveNoteBtn" class="save-button">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the Canvas environment
+        const firebaseConfig = {
+    		apiKey: "AIzaSyDxpyIGYFlSVE8VFmcTrE86USCGSZs-rQM",
+   		authDomain: "calendario-367ff.firebaseapp.com",
+   		projectId: "calendario-367ff",
+    		storageBucket: "calendario-367ff.firebasestorage.app",
+   	 	messagingSenderId: "663331418216",
+    		appId: "1:663331418216:web:1f36cce8bac9a37a324bdd",
+    		measurementId: "G-NDL6JHB23H"
+  	};
+	const appId = firebaseConfig.projectId;
+	const initialAuthToken = null;
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let currentUserId = null;
+        let unsubscribeFromNotes = null; // To store the unsubscribe function for Firestore listener
+        let currentNotes = {}; // Cache for notes to avoid re-fetching on every render
+
+        // Calendar state
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+
+        // Adjust initial month/year to September 2025 if before that
+        if (currentYear < 2025 || (currentYear === 2025 && currentMonth < 8)) { // Month 8 is September
+            currentMonth = 8; // September
+            currentYear = 2025;
+        }
+
+        // DOM elements
+        const currentMonthYearEl = document.getElementById('currentMonthYear');
+        const calendarGridEl = document.querySelector('.calendar-grid');
+        const prevMonthBtn = document.getElementById('prevMonthBtn');
+        const nextMonthBtn = document.getElementById('nextMonthBtn');
+        const noteModal = document.getElementById('noteModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalDateEl = document.getElementById('modalDate');
+        const noteInput = document.getElementById('noteInput');
+        const saveNoteBtn = document.getElementById('saveNoteBtn');
+        const cancelNoteBtn = document.getElementById('cancelNoteBtn');
+        const deleteNoteBtn = document.getElementById('deleteNoteBtn');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        let selectedDate = null; // Stores the date for the currently open modal
+
+        // --- Firebase Authentication and Data Loading ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                userIdDisplay.textContent = `Tu ID de usuario: ${currentUserId}`;
+                console.log("Usuario autenticado:", currentUserId);
+                // Load notes after authentication
+                loadNotes();
+            } else {
+                // If no user, try to sign in with custom token or anonymously
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("Sesión iniciada con token personalizado.");
+                    } else {
+                        await signInAnonymously(auth);
+                        console.log("Sesión iniciada anónimamente.");
+                    }
+                } catch (error) {
+                    console.error("Error al iniciar sesión:", error);
+                    userIdDisplay.textContent = "Error al cargar ID de usuario.";
+                }
+            }
+        });
+
+        // Function to load notes from Firestore
+        function loadNotes() {
+            if (unsubscribeFromNotes) {
+                unsubscribeFromNotes(); // Unsubscribe from previous listener if exists
+            }
+
+            // Define the collection path for public data
+            const notesCollectionRef = collection(db, `artifacts/${appId}/public/data/calendar_notes`);
+
+            // Listen for real-time updates
+            unsubscribeFromNotes = onSnapshot(notesCollectionRef, (snapshot) => {
+                currentNotes = {}; // Clear cache
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    currentNotes[data.date] = { id: doc.id, note: data.note, userId: data.userId };
+                });
+                console.log("Notas cargadas/actualizadas:", currentNotes);
+                renderCalendar(); // Re-render calendar with updated notes
+                loadingSpinner.classList.remove('show'); // Hide spinner once data is loaded
+            }, (error) => {
+                console.error("Error al cargar notas:", error);
+                loadingSpinner.classList.remove('show');
+            });
+        }
+
+        // --- Calendar Rendering Logic ---
+
+        const monthNames = [
+            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        ];
+
+        function renderCalendar() {
+            loadingSpinner.classList.add('show'); // Show spinner when rendering
+            currentMonthYearEl.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+
+            // Clear previous days (keep day names)
+            const oldDayCells = calendarGridEl.querySelectorAll('.day-cell');
+            oldDayCells.forEach(cell => cell.remove());
+
+            const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+            // Adjust start day: Sunday is 0, Monday is 1. We want Monday to be the first day of the week.
+            let startDay = firstDayOfMonth.getDay();
+            if (startDay === 0) startDay = 7; // If Sunday (0), make it 7 for correct offset
+            startDay--; // Adjust to 0-indexed for Monday (0)
+
+            const today = new Date();
+            const todayDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+            // Add empty cells for days before the 1st of the month
+            for (let i = 0; i < startDay; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.classList.add('day-cell', 'bg-gray-100', 'cursor-not-allowed');
+                calendarGridEl.appendChild(emptyCell);
+            }
+
+            // Add days of the month
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayCell = document.createElement('div');
+                dayCell.classList.add('day-cell', 'current-month', 'hover:bg-blue-50', 'relative');
+                const dateString = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                dayCell.dataset.date = dateString;
+
+                const dayNumber = document.createElement('span');
+                dayNumber.classList.add('day-number');
+                dayNumber.textContent = i;
+                dayCell.appendChild(dayNumber);
+
+                // Add "today" class if it's the current day
+                if (dateString === todayDateString) {
+                    dayCell.classList.add('today');
+                }
+
+                // Display note if available
+                if (currentNotes[dateString]) {
+                    const noteText = document.createElement('p');
+                    noteText.classList.add('day-note');
+                    noteText.textContent = currentNotes[dateString].note;
+                    dayCell.appendChild(noteText);
+                }
+
+                dayCell.addEventListener('click', () => openNoteModal(dateString));
+                calendarGridEl.appendChild(dayCell);
+            }
+            loadingSpinner.classList.remove('show'); // Hide spinner after rendering
+        }
+
+        // --- Modal Functionality ---
+
+        function openNoteModal(dateString) {
+            selectedDate = dateString;
+            const noteData = currentNotes[dateString];
+
+            modalDateEl.textContent = selectedDate;
+            noteInput.value = noteData ? noteData.note : '';
+            modalTitle.textContent = noteData ? `Editar Nota para el ${selectedDate}` : `Añadir Nota para el ${selectedDate}`;
+
+            // Show/hide delete button based on whether a note exists and if it was created by the current user
+            if (noteData && noteData.userId === currentUserId) {
+                deleteNoteBtn.style.display = 'inline-block';
+            } else {
+                deleteNoteBtn.style.display = 'none';
+            }
+
+            noteModal.classList.add('show');
+        }
+
+        function closeNoteModal() {
+            noteModal.classList.remove('show');
+            selectedDate = null;
+            noteInput.value = '';
+        }
+
+        // --- Firestore Save/Delete Note ---
+
+        async function saveNote() {
+            const noteText = noteInput.value.trim();
+            if (!selectedDate || !currentUserId) {
+                console.error("Fecha o ID de usuario no definidos.");
+                return;
+            }
+
+            const existingNote = currentNotes[selectedDate];
+
+            try {
+                if (noteText) {
+                    // If there's an existing note, use its ID. Otherwise, create a new unique ID.
+                    const docId = existingNote ? existingNote.id : `${selectedDate}-${crypto.randomUUID()}`;
+                    const noteDocRef = doc(db, `artifacts/${appId}/public/data/calendar_notes`, docId);
+
+                    await setDoc(noteDocRef, {
+                        date: selectedDate,
+                        note: noteText,
+                        userId: currentUserId,
+                        timestamp: serverTimestamp()
+                    }, { merge: true }); // Use merge to update existing fields or create new document
+                    console.log("Nota guardada:", selectedDate, noteText);
+                } else {
+                    // If noteText is empty, attempt to delete the note
+                    if (existingNote) {
+                        // Only allow deletion if the current user is the owner of the note
+                        if (existingNote.userId === currentUserId) {
+                            const noteDocRef = doc(db, `artifacts/${appId}/public/data/calendar_notes`, existingNote.id);
+                            await deleteDoc(noteDocRef);
+                            console.log("Nota eliminada (texto vacío):", selectedDate);
+                        } else {
+                            console.warn("No puedes eliminar la nota de otro usuario vaciando el texto.");
+                            // Optionally, revert the textarea to the original note if not allowed to delete
+                            noteInput.value = existingNote.note;
+                            return; // Prevent closing modal if not allowed to delete
+                        }
+                    }
+                    // If no existing note and text is empty, do nothing
+                }
+                closeNoteModal();
+            } catch (e) {
+                console.error("Error al guardar/eliminar nota: ", e);
+            }
+        }
+
+        async function deleteNote() {
+            if (!selectedDate || !currentUserId) {
+                console.error("Fecha o ID de usuario no definidos.");
+                return;
+            }
+
+            const noteData = currentNotes[selectedDate];
+            if (!noteData || noteData.userId !== currentUserId) {
+                console.warn("No puedes eliminar esta nota o no tienes permisos.");
+                return;
+            }
+
+            const docId = noteData.id;
+            const noteDocRef = doc(db, `artifacts/${appId}/public/data/calendar_notes`, docId);
+
+            try {
+                await deleteDoc(noteDocRef);
+                console.log("Nota eliminada:", selectedDate);
+                closeNoteModal();
+            } catch (e) {
+                console.error("Error al eliminar nota: ", e);
+            }
+        }
+
+        // --- Event Listeners for Navigation and Modal ---
+
+        prevMonthBtn.addEventListener('click', () => {
+            if (currentMonth === 0) {
+                currentMonth = 11;
+                currentYear--;
+            } else {
+                currentMonth--;
+            }
+            renderCalendar();
+        });
+
+        nextMonthBtn.addEventListener('click', () => {
+            if (currentMonth === 11) {
+                currentMonth = 0;
+                currentYear++;
+            } else {
+                currentMonth++;
+            }
+            renderCalendar();
+        });
+
+        saveNoteBtn.addEventListener('click', saveNote);
+        cancelNoteBtn.addEventListener('click', closeNoteModal);
+        deleteNoteBtn.addEventListener('click', deleteNote);
+
+        // Initial render (will be updated by onAuthStateChanged after notes load)
+        renderCalendar();
+    </script>
+</body>
+</html>
